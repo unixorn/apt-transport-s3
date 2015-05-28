@@ -1,4 +1,9 @@
 #!/usr/bin/python3 -u
+################################################################################
+#
+#       Required Python3 (>=3.4) due to removal of urllib getters
+#
+################################################################################
 # Copyright (C) 2014 Bashton Ltd
 #
 # This program is free software: you can redistribute it and/or modify
@@ -16,14 +21,14 @@
 
 import urllib.request, urllib.error, urllib.parse
 import time
+import base64
 import hashlib
 import hmac
 import json
 import sys
 import os
 from configobj import ConfigObj
-
-import syslog
+from socket import timeout
 
 
 class AWSCredentials(object):
@@ -70,7 +75,6 @@ class AWSCredentials(object):
             return config
         else:
             raise Exception("Config file: %s doesn't exist" % _CONF_FILE)
-            syslog.syslog("Config file: %s doesn't exist" % _CONF_FILE)
 
     def get_credentials(self):
         """
@@ -117,7 +121,7 @@ class AWSCredentials(object):
         date = time.strftime("%a, %d %b %Y %H:%M:%S GMT",
                              timeval or time.gmtime())
         request.add_header('Date', date)
-        host = request.get_host()
+        host = request.host
 
         # TODO: bucket name finding is ugly, I should find a way to support
         # both naming conventions: http://bucket.s3.amazonaws.com/ and
@@ -130,7 +134,7 @@ class AWSCredentials(object):
             raise Exception("Can't establish bucket name based on the hostname:\
               %s" % host)
 
-        resource = "/%s%s" % (bucket, request.get_selector(), )
+        resource = "/%s%s" % (bucket, request.selector)
         amz_headers = 'x-amz-security-token:%s\n' % self.token
         sigstring = ("%(method)s\n\n\n%(date)s\n"
                      "%(canon_amzn_headers)s%(canon_amzn_resource)s") % ({
@@ -139,29 +143,24 @@ class AWSCredentials(object):
                          'canon_amzn_headers': amz_headers,
                          'canon_amzn_resource': resource})
         digest = hmac.new(
-            str(self.secret_key),
-            str(sigstring),
+            str.encode(self.secret_key),
+            str.encode(sigstring),
             hashlib.sha1).digest()
-        signature = digest.encode('base64')
+        signature = base64.b64encode(digest)
         return signature
 
     def urlopen(self, url, **kwargs):
         """urlopen(url) open the remote file and return a file object."""
         try:
             return urllib.request.urlopen(self._request(url), None, 30)
-        except urllib.error.HTTPError as e:
-            # HTTPError is a "file like object" similar to what
-            # urllib2.urlopen returns, so return it and let caller
-            # deal with the error code
-            return e
-        # For other errors, throw an exception directly
-        except urllib.error.URLError as e:
-            if hasattr(e, 'reason'):
-                raise Exception("URL error reason: %s" % e.reason)
-            elif hasattr(e, 'code'):
-                raise Exception("Server error code: %s" % e.code)
-        except urllib2.socket.timeout:
-            raise Exception("Socket timeout")
+        except (urllib.error.HTTPError) as error:
+            raise Exception('Data not retrieved due to: {} {}'.format\
+                    (error.code, error.reason))
+        except (urllib.error.URLError) as error:
+            raise Exception('Data not retrieved due to: {}'.format\
+                    (error.reason))
+        except timeout:
+            raise Exception("Socket timed out for: %s", url)
 
     def _request(self, url):
         request = urllib.request.Request(url)
@@ -170,7 +169,7 @@ class AWSCredentials(object):
         request.add_header(
             'Authorization', "AWS {0}:{1}".format(
                 self.access_key,
-                signature
+                signature.decode('UTF-8')
             )
         )
         return request
@@ -321,8 +320,8 @@ class S3_method(object):
 
         self.send_uri_start({
             'URI': self.uri,
-            'Size': response.headers.getheader('content-length'),
-            'Last-Modified': response.headers.getheader('last-modified')})
+            'Size': response.headers.get('content-length'),
+            'Last-Modified': response.headers.get('last-modified')})
 
         f = open(self.filename, "w")
         hash_sha256 = hashlib.sha256()
@@ -333,15 +332,15 @@ class S3_method(object):
                 break
             hash_sha256.update(data)
             hash_md5.update(data)
-            f.write(data)
+            f.write(data.decode('utf-8'))
         response.close()
         f.close()
 
         self.send_uri_done({
             'URI': self.uri,
             'Filename': self.filename,
-            'Size': response.headers.getheader('content-length'),
-            'Last-Modified': response.headers.getheader('last-modified'),
+            'Size': response.headers.get('content-length'),
+            'Last-Modified': response.headers.get('last-modified'),
             'MD5-Hash': hash_md5.hexdigest(),
             'MD5Sum-Hash': hash_md5.hexdigest(),
             'SHA256-Hash': hash_sha256.hexdigest()})
