@@ -1,9 +1,9 @@
 #!/usr/bin/python3 -u
-################################################################################
+###############################################################################
 #
 #       Required Python3 (>=3.4) due to removal of urllib getters
 #
-################################################################################
+###############################################################################
 # Copyright (C) 2014 Bashton Ltd
 #
 # This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
+import urllib.error
+import urllib.parse
 import time
 import base64
 import hashlib
@@ -154,11 +156,11 @@ class AWSCredentials(object):
         try:
             return urllib.request.urlopen(self._request(url), None, 30)
         except (urllib.error.HTTPError) as error:
-            raise Exception('Data not retrieved due to: {} {}'.format\
-                    (error.code, error.reason))
+            raise Exception('Data not retrieved due to: {} {}'.format
+                            (error.code, error.reason))
         except (urllib.error.URLError) as error:
-            raise Exception('Data not retrieved due to: {}'.format\
-                    (error.reason))
+            raise Exception('Data not retrieved due to: {}'.format
+                            (error.reason))
         except timeout:
             raise Exception("Socket timed out for: %s", url)
 
