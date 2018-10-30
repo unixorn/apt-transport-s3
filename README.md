@@ -14,7 +14,7 @@
 5. [Contribution][Contribution]
 
 ## apt-transport-s3
-Allow to have a privately hosted apt repository on S3. Access keys are read from
+Allow `apt` to use a privately hosted apt repository on S3. Access keys are read from
 `/etc/apt/s3auth.conf` file or IAM role if machine is hosted on AWS or has
 access to AWS metadata server on 169.254.169.254.  They are also taken from the
 usual environment variables.
@@ -42,12 +42,12 @@ usual environment variables.
 1. python-configobj
 
 ## Configuration
-/etc/apt/s3auth.conf or <a href="http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html">IAM role</a>
+`/etc/apt/s3auth.conf` or an instance's <a href="http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html">IAM role</a>
 can provide credentials required for using private apt repositories.
 
 NOTE: Region MUST match the region the buckets are stored in and if not defined defaults to us-east-1.
 
-Example of s3auth.conf file:
+Example `s3auth.conf` file:
 ```
 AccessKeyId = myaccesskey
 SecretAccessKey = mysecretaccesskey
@@ -62,7 +62,7 @@ specified using an s3:// prefix, for example:
 
 if you need to use a proxy to connect to the internet you can specify this
 as an APT configuration directive (for example in
-/etc/apt/apt.conf.d/90apt-transport-s3)
+`/etc/apt/apt.conf.d/90apt-transport-s3`)
 
 `Acquire::http::Proxy "http://myproxy:3128/";`
 
